@@ -155,24 +155,29 @@ class Player
             switch(this.type){
                 case("user"):
                     // 何か選択してアクションを決めるがよくわからないので、いったんこれを入れておく
-                    return new GameDecision("hit",20);
+                    this.bet = 20;
+                    return new GameDecision("hit",this.bet);
                     break;
                 case("house"):
-                    return　new GameDecision("hit",20);
+                    this.bet = 20;
+                    return　new GameDecision("hit",this.bet);
                     break;
-                case("ai"):
-                    
+                case("ai"):                  
                     if (this.getHandScore() > 17){
-                        console.log("test");
-                        return new GameDecision("stand", 0);
+                        this.bet = 20;
+                        return new GameDecision("stand", this.bet);
                     }
-                    console.log("test");
-                    return new GameDecision("hit",20);
+                    if (this.getHandScore() === 10){
+                        this.bet = 20;
+                        return new GameDecision("double",this.bet);
+                    }
+                    this.bet = 20;
+                    return new GameDecision("hit",this.bet);
                     break;
                 default: return;
             }
         } else {
-            return new GameDecision("stand", 0);
+            return new GameDecision("stand", this.bet);
         }
     }
 
@@ -268,10 +273,17 @@ class Table
         if (player.getHandScore() > 21){
             player.gameStatus = "bust";
             player.chips -= player.bet;
+            player.bet = 0;
         }
 
-        if (tempGameDisicion.action === "stand"){
+        if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
             player.gameStatus = "stand";
+        }
+
+        if (tempGameDisicion.action === "double" && player.getHandScore() <= 21){
+            player.hand.push(this.deck.drawOne());
+            player.gameStatus = "stand";
+            player.bet *= 2;
         }
     }
 
@@ -281,7 +293,12 @@ class Table
     */
     blackjackEvaluateAndGetRoundResults()
     {
-        //TODO: ここから挙動をコードしてください。    
+        //TODO: ここから挙動をコードしてください。
+        let str = "";
+        for (let i = 0; i < this.players.length-1; i++){
+            str += " ["+ i + "] name: " +  this.players[i].name + ", chips: " + this.players[i].chips + "\n";
+        }
+        return str;
     }
 
     /*
@@ -338,8 +355,29 @@ class Table
             i++; 
         }
 
+        // this.player's last index data is "house", so for loop goes until this.player.length - 1.
+        for(let i = 0; i < this.players.length-1; i++){
+            if (this.judgeWinner(this.players[i], this.players[this.players.length-1])) this.players[i].winAmount = this.players[i].bet;
+            else this.players[i].winAmount = -1 * this.players[i].bet;
+
+            this.players[i].chips += this.players[i].winAmount;
+        }
+
+        console.log(this.blackjackEvaluateAndGetRoundResults());
+
         this.gamePhase = 'roundOver';
 
+    }
+
+    /*
+      Player player: Player data, Player house: House data
+      return boolean : if player wins, it returns true. 
+    */
+    judgeWinner(player, house){
+        if (player.getHandScore() > 21) return false;
+        if (house.getHandScore() > 21) return true;
+        if (player.getHandScore() > house.getHandScore()) return true;
+        return false;
     }
 
     /*
@@ -375,9 +413,13 @@ class Table
 }
 
 let table = new Table("BlackJack");
-// console.log(table.players);
 
-console.log("******************************");
+// console.log("************initial******************")
+
+// console.log(table.players);
+// console.log(table.gamePhase);
+
+console.log("************first round******************");
 // table.haveTurn();
 // console.log(table.players);
 // console.log(table.gamePhase);
@@ -385,5 +427,5 @@ console.log("******************************");
 //     table.haveTurn();
 // }
 table.haveTurn();
-console.log(table.players);
+// console.log(table.players);
 console.log(table.gamePhase);
