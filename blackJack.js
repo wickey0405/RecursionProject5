@@ -193,10 +193,23 @@ class Player
         for(let i = 0; i < this.hand.length; i++){
             score += this.hand[i].getRankNumber();
         }
+        if (this.hasAceCard() && score > 21) score -= 10;
         this.playerScore = score;
         return score;
     }
     
+    /*
+      return boolean: 手札にAが含まれるかどうか
+
+    */
+    hasAceCard(){
+        let flag = false;
+        this.hand.forEach(x=>{
+            if(x.rank === "A") flag = true;
+        });
+        return flag;
+    }
+
 }
 
 class GameDecision
@@ -271,9 +284,14 @@ class Table
         }
 
         if (player.getHandScore() > 21){
-            player.gameStatus = "bust";
-            player.chips -= player.bet;
-            player.bet = 0;
+            if (!player.hasAceCard()){
+                player.gameStatus = "bust";
+                player.chips -= player.bet;
+                player.bet = 0;
+            } else {
+                player.gameStatus = "betting";
+            }
+            
         }
 
         if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
@@ -294,7 +312,7 @@ class Table
     blackjackEvaluateAndGetRoundResults()
     {
         //TODO: ここから挙動をコードしてください。
-        let str = "";
+        let str = "***** Round " + this.turnCounter + " ********\n";
         for (let i = 0; i < this.players.length-1; i++){
             str += " ["+ i + "] name: " +  this.players[i].name + ", chips: " + this.players[i].chips + "\n";
         }
@@ -364,7 +382,8 @@ class Table
         }
 
         console.log(this.blackjackEvaluateAndGetRoundResults());
-
+        this.turnCounter++;
+        this.blackjackClearPlayerHandsAndBets();
         this.gamePhase = 'roundOver';
 
     }
@@ -423,9 +442,12 @@ console.log("************first round******************");
 // table.haveTurn();
 // console.log(table.players);
 // console.log(table.gamePhase);
-// while(table.gamePhase != 'roundOver'){
-//     table.haveTurn();
-// }
-table.haveTurn();
+while (table.turnCounter <= 3){
+    table.gamePhase = "betting";
+    while(table.gamePhase != 'roundOver'){
+    table.haveTurn();
+    }
+}
+// table.haveTurn();
 // console.log(table.players);
 console.log(table.gamePhase);
