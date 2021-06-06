@@ -139,6 +139,9 @@ class Player
         // プレイヤーの現状スコアを表します。(consoleで確認したかっただけ、最終的には削除する)
         this.playerScore = this.getHandScore();
 
+        // 最終的に決めたアクション stand, bust, double, blackjackのいずれか
+        this.finalAction = "";
+
     }
 
     /*
@@ -167,7 +170,7 @@ class Player
                         this.bet = 20;
                         return new GameDecision("stand", this.bet);
                     }
-                    if (this.getHandScore() === 10){
+                    if (this.getHandScore() === 10 && this.hand.length === 2){
                         this.bet = 20;
                         return new GameDecision("double",this.bet);
                     }
@@ -177,7 +180,7 @@ class Player
                 default: return;
             }
         } else {
-            return new GameDecision("stand", this.bet);
+            return new GameDecision("decided", this.bet);
         }
     }
 
@@ -193,20 +196,43 @@ class Player
         for(let i = 0; i < this.hand.length; i++){
             score += this.hand[i].getRankNumber();
         }
-        if (this.hasAceCard() && score > 21) score -= 10;
+        
+        let aces = this.howManyAceCard();
+        while (aces > 0){
+            if (score > 21){
+                score -= 10;
+                aces--;
+            } else break;
+        }
+
         this.playerScore = score;
         return score;
     }
     
     /*
-      return boolean: 手札にAが含まれるかどうか
+      return Number: 手札に何枚のAが含まれるかを返す
 
     */
-    hasAceCard(){
-        let flag = false;
+    howManyAceCard(){
+        let count = 0;
         this.hand.forEach(x=>{
-            if(x.rank === "A") flag = true;
+            if(x.rank === "A") count++;
         });
+        return count;
+    }
+
+    /*
+      return boolean: 手札がBlackJackかどうか
+
+    */
+    isBlackJack(){
+        let flag = false;
+        if(this.howManyAceCard()===1 && this.getHandScore()===21 && this.hand.length === 2){
+            flag = true;
+            this.hand.forEach(x=>{
+                if (x.rank === "10") flag = false;
+            })
+        }
         return flag;
     }
 
@@ -284,25 +310,25 @@ class Table
         }
 
         if (player.getHandScore() > 21){
-            if (!player.hasAceCard()){
-                player.gameStatus = "bust";
-                player.chips -= player.bet;
-                player.bet = 0;
-            } else {
-                player.gameStatus = "betting";
-            }
-            
+            player.gameStatus = "bust";
+            player.finalAction = "bust";
+            // player.chips -= player.bet;
+            // player.bet = 0;        
         }
 
         if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
+            player.finalAction = "stand";
+            if (player.isBlackJack()) player.finalAction = "blackjack";
             player.gameStatus = "stand";
         }
 
-        if (tempGameDisicion.action === "double" && player.getHandScore() <= 21){
+        if (tempGameDisicion.action === "double"){
             player.hand.push(this.deck.drawOne());
+            player.finalAction = "double";
             player.gameStatus = "stand";
             player.bet *= 2;
         }
+
     }
 
     /*
@@ -314,7 +340,7 @@ class Table
         //TODO: ここから挙動をコードしてください。
         let str = "***** Round " + this.turnCounter + " ********\n";
         for (let i = 0; i < this.players.length-1; i++){
-            str += " ["+ i + "] name: " +  this.players[i].name + ", chips: " + this.players[i].chips + "\n";
+            str += " ["+ i + "] name: " +  this.players[i].name + ", action: " + this.players[i].finalAction + ", chips: " + this.players[i].chips + ", bet: " + this.players[i].bet + ", won: " + this.players[i].winAmount +  "\n";
         }
         return str;
     }
@@ -342,6 +368,8 @@ class Table
             this.players[i].bet = 0;
             this.players[i].gameStatus = 'betting';
             this.players[i].hand = [];
+            this.players[i].winAmount = 0;
+            this.players[i].finalAction = "";
         }
     }
     
@@ -369,17 +397,24 @@ class Table
         console.log("******************start****************");
         while(!this.allPlayerActionsResolved()){
             this.evaluateMove(this.players[i % this.players.length]);
-            console.log(this.players[i % this.players.length]);
+            // console.log(this.players[i % this.players.length]);
             i++; 
         }
 
         // this.player's last index data is "house", so for loop goes until this.player.length - 1.
         for(let i = 0; i < this.players.length-1; i++){
-            if (this.judgeWinner(this.players[i], this.players[this.players.length-1])) this.players[i].winAmount = this.players[i].bet;
+            if (this.judgeWinner(this.players[i], this.players[this.players.length-1]) && this.players[i].isBlackJack()) this.players[i].winAmount = this.players[i].bet * 1.5;
+            else if(this.judgeWinner(this.players[i], this.players[this.players.length-1])) this.players[i].winAmount = this.players[i].bet;
+            else if(this.players[i].getHandScore() === this.players[this.players.legnth-1]) this.players[i].winAmount = 0;
             else this.players[i].winAmount = -1 * this.players[i].bet;
 
+            if (this.players[i].finalAction === "surrender") this.players[i].winAmount = -0.5 * this.players[i].bet;
+
             this.players[i].chips += this.players[i].winAmount;
+            console.log(this.players[i % this.players.length]);
+            // console.log(this.players[i].isBlackJack());
         }
+        console.log(this.players[this.players.length-1]);
 
         console.log(this.blackjackEvaluateAndGetRoundResults());
         this.turnCounter++;
@@ -393,6 +428,8 @@ class Table
       return boolean : if player wins, it returns true. 
     */
     judgeWinner(player, house){
+        if (player.isBlackJack() && !house.isBlackJack()) return true;
+        if (!player.isBlackJack() && house.isBlackJack()) return false;
         if (player.getHandScore() > 21) return false;
         if (house.getHandScore() > 21) return true;
         if (player.getHandScore() > house.getHandScore()) return true;
@@ -423,7 +460,7 @@ class Table
     allPlayerActionsResolved()
     {
         //TODO: ここから挙動をコードしてください。
-        let gameStatusList = ['broken', 'bust', 'stand', 'surrender'];
+        let gameStatusList = ['broken', 'bust', 'stand', 'surrender', 'decided'];
         for (let i = 0; i < this.players.length; i++){
             if (!gameStatusList.includes(this.players[i].gameStatus)) return false;
         }
