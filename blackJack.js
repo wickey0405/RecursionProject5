@@ -1,3 +1,273 @@
+// JavaScriptを記述しましょう。
+class View{
+    static config = {
+        gameDiv : document.getElementById("gameDiv"),
+        loginForm : document.getElementById("loginForm"),
+        roundStartPage : document.getElementById("roundStartPage"),
+        suitImgURL : {
+            "S" : "/img/dashboard/lessons/projects/spade.png",
+            "H" : "/img/dashboard/lessons/projects/heart.png",
+            "C" : "/img/dashboard/lessons/projects/clover.png",
+            "D" : "/img/dashboard/lessons/projects/diamond.png",
+            "?" : "https://recursionist.io/img/questionMark.png"
+        },
+        playerId : {
+            0 : "nonCurPlayer1Div",
+            1 : "curPlayerDiv",
+            2 : "nonCurPlayer2Div"
+        },
+
+    }
+
+    static displayNone(ele){
+        ele.classList.remove("d-block");
+        ele.classList.add("d-none");
+    }
+
+    static displayBlock(ele){
+        ele.classList.remove("d-none");
+        ele.classList.add("d-block");
+    }
+
+    static topPage(){
+        View.config.loginForm.innerHTML = `
+        <p class="text-white" > Welcome to Card Game! </p>
+            <!-- name field div -->
+            <div>
+                <input type="text" placeholder="name" value="">
+            </div>
+            <!-- game type div -->
+            <div>
+                <select class="w-100">
+                    <option value="blackjack">Blackjack </option>
+                    <!-- <option value="poker">Poker </option> -->
+                </select>
+            </div>
+            <!-- submit div -->
+            <div>
+                <!-- <a href="" class="btn btn-success">Start Game </a> -->
+                <!-- <form id="game-form" class="form" onsubmit="">                 -->
+                <button type="submit" class="btn btn-success">Start Game</button>
+                <!-- </form> -->
+            </div>
+        `
+
+        // Nameに何も入力しなかった場合Default名Jiroで始まる。
+        let btn = View.config.loginForm.querySelectorAll("button")[0];       
+        
+        btn.addEventListener("click",()=>{
+            let name = View.config.loginForm.querySelectorAll("input")[0].value;
+            if (name === "") View.config.loginForm.querySelectorAll("input")[0].value = "Jiro";
+            View.goToRoundStartPage();
+        })
+    }
+
+    static goToRoundStartPage(){
+        View.displayNone(View.config.loginForm);
+        Controller.playerInfoSet();
+        View.makeTableView();        
+        View.displayBlock(View.config.roundStartPage);
+    }
+
+    static makeTableView(){
+        View.config.roundStartPage.innerHTML = `
+        <div class="pt-5">
+            <p class="m-0 text-center text-white rem3">Dealer</p>
+
+            <!-- House Card Row -->
+            <div id="houseCardDiv" class="d-flex justify-content-center pt-3 pb-5">
+            </div>
+        </div>
+        <div class="">
+
+            <!-- Players Div -->
+            <div id="playersDiv" class="d-flex justify-content-center">
+
+                <!-- nonCurPlayerDiv 1-->
+                <div id="nonCurPlayer1Div" class="flex-column">
+                </div><!-- end player -->
+
+                <!-- curPlayerDiv -->
+                <div id = "curPlayerDiv" class="flex-column w-50">
+                </div><!-- end player -->
+
+                <!-- nonCurPlayer2Div -->
+                <div id="nonCurPlayer2Div" class="flex-column">
+                </div><!-- end player -->
+            </div><!-- end players -->
+
+            <!-- actionsAndBetsDiv -->
+            <div id="actionsAndBetsDiv" class="d-flex pb-5 pt-4 justify-content-center">
+            </div><!-- end actionsAndBetsDiv-->
+        </div>
+        
+        `
+        // Controller.selectMaskCard("houseCardDiv",table.players[table.players.length-1].hand,[0,1]);
+
+        // View.makePlayerCard("nonCurPlayer1Div",table.players[0]);
+        // View.makePlayerCard("curPlayerDiv",table.players[1]);
+        // View.makePlayerCard("nonCurPlayer2Div",table.players[2]);
+
+        for (let i = 0; i < table.players.length; i++){
+            if(i !== table.players.length-1) View.makePlayerCard(View.config.playerId[i], table.players[i]);
+            else Controller.selectMaskCard("houseCardDiv",table.players[i].hand,[0,1]);
+        }
+
+        document.getElementById("actionsAndBetsDiv").append(View.makeBetsDiv());
+
+        for (let i = 0; i < table.betDenominations.length; i++){
+            let target = document.getElementById("betsDivChild");
+            target.append(View.makeBetChoiceDiv(i, table.betDenominations[i]));
+            View.bettingBtnEvent(i, table.players[1]);
+        }
+    }
+
+    static makePlayerCard(id, player){
+        let target = document.getElementById(id);
+        let cardId = id + "CardDiv";
+        target.innerHTML = "";
+        target.innerHTML = `
+            <p class="m-0 text-white text-center rem3">${player.name}</p>
+
+            <!-- playerInfoDiv -->
+            <div class="text-white d-flex m-0 p-0 justify-content-around">
+                <p class="rem1 text-left">S:${player.gameStatus} </a>
+                <p class="rem1 text-left">B:${player.bet} </a>
+                <p class="rem1 text-left">R:${player.chips} </a>
+            </div>
+            <!-- cardsDiv -->
+            <div id="${cardId}" class="d-flex justify-content-center">
+            </div><!-- end Cards -->
+        `
+        Controller.selectMaskCard(cardId,player.hand,[0,1]);
+    }
+
+    static makeBetChoiceDiv(num, money){
+        let target = document.createElement("div");
+        target.id = "betChoiceDiv" + num;
+        target.innerHTML = `
+            <div id="${target.id}">
+                <div class="input-group" >
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-danger btn-number">
+                            -
+                        </button>
+                    </span>
+                    <input type="text" class="input-number text-center" size="2" maxlength="5" value="0">
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-success btn-number">
+                            +
+                        </button>
+                    </span>
+                </div><!--end input group div -->
+                <p class="text-white text-center">${money}</p>
+            </div> <!-- end betChoiceDiv -->
+        `
+        return target;
+    }
+
+    static bettingBtnEvent(num, player){
+        let target = document.getElementById(`betChoiceDiv${num}`);
+        let minusBtn = target.querySelectorAll("button")[0];
+        let plusBtn = target.querySelectorAll("button")[1];
+        let amountDiv = target.querySelectorAll("input")[0];
+        console.log(typeof(amountDiv.value));
+
+        minusBtn.addEventListener("click",()=>{
+            amountDiv.value = parseInt(amountDiv.value)-1;
+        })
+
+        plusBtn.addEventListener("click",()=>{
+            amountDiv.value = parseInt(amountDiv.value)+1;
+        })
+    }
+
+    static makeBetsDiv(){
+        let betsDiv = document.createElement("Div");
+        betsDiv.classList.add("d-flex", "flex-column","w-50");
+        betsDiv.id = "betsDiv";
+        
+        betsDiv.innerHTML = `
+        <!-- betsDiv -->
+        <!-- bottom half of bets including chip increments and submit  -->
+        <div id="betsDivChild" class="py-2 h-60 d-flex justify-content-between">            
+        </div><!-- end bestSelectionDiv -->
+        <!-- betSubmitDiv -->
+        <div class="w-100 btn-success rem5 text-center bg-primary">
+            Submit your bet
+        </div><!-- end betSubmitDiv -->
+        `
+        return betsDiv;
+    }
+
+    static makeCardDiv(card, isMask){
+        let cardDiv = document.createElement("div");
+        cardDiv.classList.add("bg-white","border","mx-2");
+        let suit = isMask ? "?" : card.suit;
+        let rank = isMask ? "?" : card.rank;
+
+        cardDiv.innerHTML = `
+            <div class="text-center">
+                <img src="${View.config.suitImgURL[suit]}" alt="" width="50" height="50">
+            </div>
+            <div class="text-center">
+                <p class="m-0 ">${rank}</p>
+            </div>
+        `
+        return cardDiv;
+    }
+
+    static insertCardDivToPlayerDiv(id, card, isMask){
+        let targetId = document.getElementById(id);
+        targetId.append(View.makeCardDiv(card, isMask));
+    }
+
+}
+
+class Controller{
+    static initializeApp(){
+        View.topPage();
+        let table = new Table(View.config.loginForm.querySelectorAll("select")[0].value);
+        return table;
+    }
+
+    static playerInfoSet(){
+        // playersとHouseの初期化
+        let userName = View.config.loginForm.querySelectorAll("input")[0].value;
+        table.house = new Player('house', 'ai', table.gameType);
+        table.players.push(new Player("ai1", 'ai', table.gameType));
+        table.players.push(new Player(userName, userName === "ai" ? "ai" : "user", table.gameType));
+        table.players.push(new Player('ai2', 'ai', table.gameType));
+        table.players.push(table.house);
+
+        Controller.distributeCards(table);
+    }
+
+    static distributeCards(table){
+        table.blackjackAssignPlayerHands();
+    }
+
+    // id: string, hand: Card[], maskList: int[] -> null (choise to mask cards in the hands)
+    static selectMaskCard(id, hand, maskList){
+        let count = 0;
+        let targetDiv = document.getElementById(id);
+        targetDiv.innerHTML = "";
+        for (let card of hand){
+            let flag;
+            if (maskList.includes(count)) flag = true;
+            else flag = false;
+            View.insertCardDivToPlayerDiv(id,card,flag);
+            count++;
+        }
+    }
+
+
+}
+
+/*
+Blackjackの実装
+前回作成したコードを使ってください。
+*/
 // 前回作成したコードをここに貼り付けてください。
 class Card
 {
@@ -51,7 +321,7 @@ class Deck
         const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 
         // ゲームタイプによって、カードを初期化してください。
-        if (this.gameType === "BlackJack"){
+        if (this.gameType === "blackjack"){
             for(let suit in suits){
                 for(let rank in ranks){
                     this.cards.push(new Card(suits[suit], ranks[rank]));
@@ -86,7 +356,7 @@ class Deck
     reListDeck()
     {
         //TODO: ここから挙動をコードしてください。
-        if (this.gameType === "BlackJack") this.cards = new Deck("BlackJack").cards;
+        if (this.gameType === "blackjack") this.cards = new Deck("blackjack").cards;
     }
     
     /*
@@ -278,12 +548,12 @@ class Table
         this.players = [];
         
         // プレイヤーをここで初期化してください。
+        // this.house = new Player('house', 'ai', this.gameType);
+        // this.players.push(new Player("ai1", 'ai', this.gameType));
+        // this.players.push(new Player("user", 'ai', this.gameType));
+        // this.players.push(new Player('ai2', 'ai', this.gameType));
+        // this.players.push(this.house);
         
-        this.house = new Player('house', 'ai', this.gameType);
-        this.players.push(new Player("player1", 'ai', this.gameType));
-        this.players.push(new Player('player2', 'ai', this.gameType));
-        this.players.push(new Player('player3', 'ai', this.gameType));
-        this.players.push(this.house);
         this.gamePhase = 'betting';
 
         // これは各ラウンドの結果をログに記録するための文字列の配列です。
@@ -391,13 +661,13 @@ class Table
     haveTurn(userData)
     {
         //TODO: ここから挙動をコードしてください。
-        this.blackjackAssignPlayerHands();
+        // this.blackjackAssignPlayerHands();
         let i = 0;
 
         console.log("******************start****************");
         while(!this.allPlayerActionsResolved()){
             this.evaluateMove(this.players[i % this.players.length]);
-            // console.log(this.players[i % this.players.length]);
+            console.log(this.players[i % this.players.length]);
             i++; 
         }
 
@@ -419,6 +689,7 @@ class Table
         console.log(this.blackjackEvaluateAndGetRoundResults());
         this.turnCounter++;
         this.blackjackClearPlayerHandsAndBets();
+        this.deck.reListDeck();
         this.gamePhase = 'roundOver';
 
     }
@@ -468,23 +739,33 @@ class Table
     }
 }
 
-let table = new Table("BlackJack");
+
 
 // console.log("************initial******************")
 
 // console.log(table.players);
 // console.log(table.gamePhase);
 
-console.log("************first round******************");
-// table.haveTurn();
-// console.log(table.players);
+// console.log("************first round******************");
+// // table.haveTurn();
+// // console.log(table.players);
+// // console.log(table.gamePhase);
+// while (table.turnCounter <= 3){
+//     table.gamePhase = "betting";
+//     while(table.gamePhase != 'roundOver'){
+//     table.haveTurn();
+//     }
+// }
+// // table.haveTurn();
+// // console.log(table.players);
 // console.log(table.gamePhase);
-while (table.turnCounter <= 3){
-    table.gamePhase = "betting";
-    while(table.gamePhase != 'roundOver'){
-    table.haveTurn();
-    }
-}
-// table.haveTurn();
-// console.log(table.players);
-console.log(table.gamePhase);
+
+// // let table1 = new Table("ai", "blackjack");
+// // while(table1.gamePhase != 'roundOver'){
+// //     table1.haveTurn();
+// // }
+
+// // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
+// // console.log(table1.resultsLog);
+
+table = Controller.initializeApp();
