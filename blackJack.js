@@ -249,16 +249,16 @@ class View{
         <!-- actionsDiv -->
             <div id ="actionsDiv" class="d-flex flex-wrap w-70">
                 <div class="py-2">
-                    <a id="surrenderBtn" class="text-dark btn btn-light px-5 py-1">Surrender</a>
+                    <a id="surrenderBtn" class="text-dark btn btn-light px-5 py-1">surrender</a>
                 </div>
                 <div class="py-2">
-                    <a id="standBtn" class="btn btn-success px-5 py-1">Stand</a>
+                    <a id="standBtn" class="btn btn-success px-5 py-1">stand</a>
                 </div>
                 <div class="py-2">
-                    <a id="hitBtn" class="btn btn-warning px-5 py-1">Hit</a>
+                    <a id="hitBtn" class="btn btn-warning px-5 py-1">hit</a>
                 </div>
                 <div class="py-2">
-                    <a id="doubleBtn" class="btn btn-danger px-5 py-1">Double</a>
+                    <a id="doubleBtn" class="btn btn-danger px-5 py-1">double</a>
                 </div>
             </div> <!-- end actionsDiv -->
         `
@@ -384,17 +384,16 @@ class Controller{
         })
     }
 
-    static actionBtnEvent(gameDecision,player){
+    static actionBtnEvent(player){
         let actionList = ["surrender", "stand", "hit", "double"];
-        let flag = table.isThisPlayerActionsResolved(player);
-        let num = table.getPlayerIdIndex(player);
-        console.log("flag: " + flag);
+        let gameDecision = new GameDecision("", player.bet);
         for (let i = 0; i < actionList.length; i++){
             let target = document.getElementById(actionList[i] + "Btn");
             target.addEventListener("click",()=>{
                 gameDecision.action = target.innerHTML;
+                player.gameStatus = target.innerHTML;
                 console.log(gameDecision.action);
-                table.userTurn(player, flag, num);
+                table.evaluateMoveSecond(player, gameDecision);
             })
         }
     }
@@ -566,19 +565,8 @@ class Player
             
             switch(this.type){
                 case("user"):
-                    // 何か選択してアクションを決めるがよくわからないので、いったんこれを入れておく
-                    new Promise((resolve, reject)=>{
-                        let temp = new GameDecision("",this.bet);
-                        resolve(temp);
-                    }).then(x=>{
-                        Controller.actionBtnEvent(x, userData);
-                        console.log(x.action)
-                        return x;
-                    }).catch(()=>console.log("error promptPlayer()"))
-                                   
-                    // Controller.actionBtnEvent(temp, userData);
-                    // console.log(temp.action + ", " + temp.amount);
-                    // return temp;
+                    // user時はボタンクリックで選択するのでここはダミーで入れておく
+                    return new GameDecision(userData.finalAction,this.bet);
                     break;
                 case("house"):
                     return　new GameDecision("hit",this.bet);
@@ -707,6 +695,51 @@ class Table
         this.turnCounter = 0;
 
     }
+
+    evaluateMoveSecond(player, tempGameDisicion){
+        console.log("action: " + tempGameDisicion.action + ", bet: " + tempGameDisicion.amount);
+        let num = this.getPlayerIdIndex(player);
+        player.bet = parseInt(tempGameDisicion.amount);
+            
+        if (tempGameDisicion.action === "hit"){
+            player.hand.push(this.deck.drawOne());
+            View.makePlayerCard(View.config.playerId[num], table.players[num]);
+            Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
+        }
+
+        if (player.getHandScore() > 21){
+            player.gameStatus = "bust";
+            player.finalAction = "bust";
+            // player.chips -= player.bet;
+            // player.bet = 0;        
+        }
+
+        if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
+            player.finalAction = "stand";
+            if (player.isBlackJack()) player.finalAction = "blackjack";
+            player.gameStatus = "stand";
+        }
+
+        if (tempGameDisicion.action === "double"){
+            player.hand.push(this.deck.drawOne());
+            player.finalAction = "double";
+            player.gameStatus = "stand";
+            player.bet *= 2;
+        }
+
+        if (tempGameDisicion.action === "surrender"){
+            player.gameStatus = "bust";
+            player.finalAction = "surrender";
+            player.bet *= 0.5;
+        }
+
+        if (player.type === "user"){
+            console.log("n回目のuserTurn()だよ")
+            console.log(player.gameStatus);
+            View.refreshPlayerStatus(View.config.playerId[table.getPlayerIdIndex(player)], player);
+            table.userTurn(player, table.isThisPlayerActionsResolved(player), table.getPlayerIdIndex(player));
+        }
+    }
     /*
         Player player : テーブルは、Player.promptPlayer()を使用してGameDecisionを取得し、GameDecisionとgameTypeに応じてPlayerの状態を更新します。
         return Null : このメソッドは、プレーヤの状態を更新するだけです。
@@ -716,54 +749,10 @@ class Table
     */
     evaluateMove(player)
     {
-        //TODO: ここから挙動をコードしてください。
-        let num = this.getPlayerIdIndex(player);
-        let temp = new GameDecision("",player.bet);
-        
-        new Promise(resolve=>{
-            if (player.type === "user"){
-                console.log("こんにちは");
-                return Controller.actionBtnEvent(temp,player);
-                
-        }
-            console.log("user action: " + temp.action);
-            resolve(temp);
-        }).then(()=>player.promptPlayer(player)).then((tempGameDisicion)=>{
-            player.bet = parseInt(tempGameDisicion.amount);
-            console.log(tempGameDisicion.amount);
-            
-            if (tempGameDisicion.action === "hit"){
-                player.hand.push(this.deck.drawOne());
-                View.makePlayerCard(View.config.playerId[num], table.players[num]);
-                Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
-            }
+        //TODO: ここから挙動をコードしてください。       
+        if (player.type === "ai") return this.evaluateMoveSecond(player, player.promptPlayer());
+        else if(player.type === "user") Controller.actionBtnEvent(player)
 
-            if (player.getHandScore() > 21){
-                player.gameStatus = "bust";
-                player.finalAction = "bust";
-                // player.chips -= player.bet;
-                // player.bet = 0;        
-            }
-
-            if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
-                player.finalAction = "stand";
-                if (player.isBlackJack()) player.finalAction = "blackjack";
-                player.gameStatus = "stand";
-            }
-
-            if (tempGameDisicion.action === "double"){
-                player.hand.push(this.deck.drawOne());
-                player.finalAction = "double";
-                player.gameStatus = "stand";
-                player.bet *= 2;
-            }
-
-            if (tempGameDisicion.action === "surrender"){
-                player.gameStatus = "bust";
-                player.finalAction = "surrender";
-                player.bet *= 0.5;
-            }
-        })
 
         // let tempGameDisicion = player.promptPlayer();
         // player.bet = parseInt(tempGameDisicion.amount);
@@ -873,11 +862,9 @@ class Table
             new Promise((resolve)=>{
                 resolve(player);
             }).then(x=>{
-                this.evaluateMove(x);
-                return x})
-            .then(y=>{
-                console.log("ここまできたよ");
-                return View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(y)], y);}).catch(()=>console.log("error of userTurn()"));
+                return this.evaluateMove(x);
+                })
+            .catch(()=>console.log("error of userTurn()"));
             
             // this.evaluateMove(player);
             // View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)], player);
