@@ -389,12 +389,26 @@ class Controller{
         let gameDecision = new GameDecision("", player.bet);
         for (let i = 0; i < actionList.length; i++){
             let target = document.getElementById(actionList[i] + "Btn");
+            console.log("btn disable " + player.finalAction);
+            if (player.finalAction === "hit"){
+                if (actionList[i] === "surrender" || actionList[i] === "double"){
+                    target.classList.add("disabled");
+                }
+            }
             target.addEventListener("click",()=>{
                 gameDecision.action = target.innerHTML;
                 player.gameStatus = target.innerHTML;
                 console.log(gameDecision.action);
                 table.evaluateMoveSecond(player, gameDecision);
             })
+        }
+    }
+
+    static allActionBtnDisabled(){
+        let actionList = ["surrender", "stand", "hit", "double"];
+        for (let i = 0; i < actionList.length; i++){
+            let target = document.getElementById(actionList[i] + "Btn");
+            target.classList.add("disabled");           
         }
     }
 }
@@ -703,6 +717,7 @@ class Table
             
         if (tempGameDisicion.action === "hit"){
             player.hand.push(this.deck.drawOne());
+            player.finalAction = "hit";
             View.makePlayerCard(View.config.playerId[num], table.players[num]);
             Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
         }
@@ -736,6 +751,7 @@ class Table
         if (player.type === "user"){
             console.log("n回目のuserTurn()だよ")
             console.log(player.gameStatus);
+            View.coloringPlayerName(View.config.playerId[table.getPlayerIdIndex(player)], player);
             View.refreshPlayerStatus(View.config.playerId[table.getPlayerIdIndex(player)], player);
             table.userTurn(player, table.isThisPlayerActionsResolved(player), table.getPlayerIdIndex(player));
         }
@@ -840,7 +856,7 @@ class Table
     aiTurn(player, flag, i){
         if(!flag){
             this.evaluateMove(player);
-            // View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)], player);
+            View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)], player);
 
             setTimeout(x=>{
                 this.aiTurn(x, this.isThisPlayerActionsResolved(x), i);
@@ -877,6 +893,7 @@ class Table
 
         } else {
             let nextPlayer = this.getTurnPlayer();
+            Controller.allActionBtnDisabled();
             new Promise((resolve, reject)=>{
                 resolve(nextPlayer);
                 reject("error");
@@ -926,20 +943,6 @@ class Table
             resolve(currPlayer);
             reject();
         }).then((val)=>this.playerActionLoop(val, 0)).catch(()=>console.log("error of haveTurn()"));
-        // View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(currPlayer)],currPlayer);
-        // console.log("curr Player\n" + currPlayer.hand);
-        
-
-        // setTimeout((x)=>{
-        //     this.aiTurn(x, this.isThisPlayerActionsResolved(x));
-            
-        // },2000,currPlayer);
-        
-
-
-        console.log("curr Player\n" + currPlayer.hand);
-
-
 
         // // this.players's last index data is the one of "house", so for loop goes until this.players.length - 1.
         // for(let i = 0; i < this.players.length-1; i++){
