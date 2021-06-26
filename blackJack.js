@@ -143,7 +143,7 @@ class View{
 
             <!-- playerInfoDiv -->
             <div id="${playerInfoId}" class="text-white d-flex m-0 p-0 justify-content-center">
-                <p class="rem1 text-left">S:${player.finalAction},&ensp; </p>
+                <p class="rem1 text-left">S:${player.tempAction},&ensp; </p>
                 <p class="rem1 text-left">B:${player.bet},&ensp; </p>
                 <p class="rem1 text-left">R:${player.chips} </p>
             </div>
@@ -171,7 +171,7 @@ class View{
         let target = document.getElementById(playerInfoId);
         target.innerHTML = "";
         target.innerHTML = `
-            <p class="rem1 text-left">S:${player.finalAction},&ensp; </p>
+            <p class="rem1 text-left">S:${player.tempAction},&ensp; </p>
             <p class="rem1 text-left">B:${player.bet},&ensp; </p>
             <p class="rem1 text-left">R:${player.chips} </p>
         `
@@ -389,8 +389,8 @@ class Controller{
         let gameDecision = new GameDecision("", player.bet);
         for (let i = 0; i < actionList.length; i++){
             let target = document.getElementById(actionList[i] + "Btn");
-            console.log("btn disable " + player.finalAction);
-            if (player.finalAction === "hit"){
+            console.log("btn disable " + player.tempAction);
+            if (player.tempAction === "hit"){
                 if (actionList[i] === "surrender" || actionList[i] === "double"){
                     target.classList.add("disabled");
                 }
@@ -562,7 +562,7 @@ class Player
         this.playerScore = this.getHandScore();
 
         // 最終的に決めたアクション stand, bust, double, blackjackのいずれか.初期値はbetting
-        this.finalAction = "betting";
+        this.tempAction = "betting";
 
     }
 
@@ -580,7 +580,7 @@ class Player
             switch(this.type){
                 case("user"):
                     // user時はボタンクリックで選択するのでここはダミーで入れておく
-                    return new GameDecision(userData.finalAction,this.bet);
+                    return new GameDecision(userData.tempAction,this.bet);
                     break;
                 case("house"):
                     return　new GameDecision("hit",this.bet);
@@ -717,34 +717,34 @@ class Table
             
         if (tempGameDisicion.action === "hit"){
             player.hand.push(this.deck.drawOne());
-            player.finalAction = "hit";
+            player.tempAction = "hit";
             View.makePlayerCard(View.config.playerId[num], table.players[num]);
             Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
         }
 
         if (player.getHandScore() > 21){
             player.gameStatus = "bust";
-            player.finalAction = "bust";
+            player.tempAction = "bust";
             // player.chips -= player.bet;
             // player.bet = 0;        
         }
 
         if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
-            player.finalAction = "stand";
-            if (player.isBlackJack()) player.finalAction = "blackjack";
+            player.tempAction = "stand";
+            if (player.isBlackJack()) player.tempAction = "blackjack";
             player.gameStatus = "stand";
         }
 
         if (tempGameDisicion.action === "double"){
             player.hand.push(this.deck.drawOne());
-            player.finalAction = "double";
+            player.tempAction = "double";
             player.gameStatus = "stand";
             player.bet *= 2;
         }
 
         if (tempGameDisicion.action === "surrender"){
             player.gameStatus = "bust";
-            player.finalAction = "surrender";
+            player.tempAction = "surrender";
             player.bet *= 0.5;
         }
 
@@ -781,27 +781,27 @@ class Table
 
         // if (player.getHandScore() > 21){
         //     player.gameStatus = "bust";
-        //     player.finalAction = "bust";
+        //     player.tempAction = "bust";
         //     // player.chips -= player.bet;
         //     // player.bet = 0;        
         // }
 
         // if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
-        //     player.finalAction = "stand";
-        //     if (player.isBlackJack()) player.finalAction = "blackjack";
+        //     player.tempAction = "stand";
+        //     if (player.isBlackJack()) player.tempAction = "blackjack";
         //     player.gameStatus = "stand";
         // }
 
         // if (tempGameDisicion.action === "double"){
         //     player.hand.push(this.deck.drawOne());
-        //     player.finalAction = "double";
+        //     player.tempAction = "double";
         //     player.gameStatus = "stand";
         //     player.bet *= 2;
         // }
 
         // if (tempGameDisicion.action === "surrender"){
         //     player.gameStatus = "bust";
-        //     player.finalAction = "surrender";
+        //     player.tempAction = "surrender";
         //     player.bet *= 0.5;
         // }
 
@@ -816,7 +816,7 @@ class Table
         //TODO: ここから挙動をコードしてください。
         let str = "***** Round " + this.turnCounter + " ********\n";
         for (let i = 0; i < this.players.length-1; i++){
-            str += " ["+ i + "] name: " +  this.players[i].name + ", action: " + this.players[i].finalAction + ", chips: " + this.players[i].chips + ", bet: " + this.players[i].bet + ", won: " + this.players[i].winAmount +  "\n";
+            str += " ["+ i + "] name: " +  this.players[i].name + ", action: " + this.players[i].tempAction + ", chips: " + this.players[i].chips + ", bet: " + this.players[i].bet + ", won: " + this.players[i].winAmount +  "\n";
         }
         return str;
     }
@@ -845,7 +845,7 @@ class Table
             this.players[i].gameStatus = 'betting';
             this.players[i].hand = [];
             this.players[i].winAmount = 0;
-            this.players[i].finalAction = "";
+            this.players[i].tempAction = "";
         }
     }
     
@@ -862,7 +862,7 @@ class Table
                 this.aiTurn(x, this.isThisPlayerActionsResolved(x), i);
                 View.refreshPlayerStatus(View.config.playerId[this.getPlayerIdIndex(x)], x);
                   
-                // console.log(player.finalAction);
+                // console.log(player.tempAction);
             },2000, player);
         } else {
             let nextPlayer = this.getTurnPlayer();
@@ -889,7 +889,7 @@ class Table
             // this.userTurn(player, this.isThisPlayerActionsResolved(player), i);
             // View.refreshPlayerStatus(View.config.playerId[this.getPlayerIdIndex(player)], player);
                 
-            // console.log(player.finalAction);
+            // console.log(player.tempAction);
 
         } else {
             let nextPlayer = this.getTurnPlayer();
@@ -921,7 +921,7 @@ class Table
                 } else {
                     this.userTurn(x, this.isThisPlayerActionsResolved(x), i);
                 }
-            },2000,player);
+            },100,player);
         } else return;
     }
 
@@ -942,7 +942,8 @@ class Table
         new Promise((resolve, reject)=>{
             resolve(currPlayer);
             reject();
-        }).then((val)=>this.playerActionLoop(val, 0)).catch(()=>console.log("error of haveTurn()"));
+        }).then((val)=>this.playerActionLoop(val, 0))
+        .then(()=>console.log("correctly finished!")).catch(()=>console.log("error of haveTurn()"));
 
         // // this.players's last index data is the one of "house", so for loop goes until this.players.length - 1.
         // for(let i = 0; i < this.players.length-1; i++){
@@ -951,7 +952,7 @@ class Table
         //     else if(this.players[i].getHandScore() === this.players[this.players.legnth-1]) this.players[i].winAmount = 0;
         //     else this.players[i].winAmount = -1 * this.players[i].bet;
 
-        //     if (this.players[i].finalAction === "surrender") this.players[i].winAmount = -this.players[i].bet;
+        //     if (this.players[i].tempAction === "surrender") this.players[i].winAmount = -this.players[i].bet;
 
         //     this.players[i].chips += this.players[i].winAmount;
         //     // console.log(this.players[i % this.players.length]);
