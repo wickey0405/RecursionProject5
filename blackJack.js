@@ -405,6 +405,14 @@ class Controller{
         }
     }
 
+    static isAImode(table){
+        let flag = true;
+        for (let i = 0; i < table.players-1; i++){
+            if (table.players[i].type === "user") flag = false;
+        }
+        return flag;
+    }
+
     static transferToActionPage(table){
         let target = document.getElementById("betSubmitDiv");
         let btnsArea = document.getElementById("actionsAndBetsDiv");
@@ -428,6 +436,8 @@ class Controller{
                 table.haveTurn();
             }            
         })
+
+        if(Controller.isAImode(table)) target.click();
     }
 
     static actionBtnEvent(player,table){
