@@ -128,6 +128,12 @@ class View{
 
         Controller.decisionBet(table);
         Controller.transferToActionPage(table);
+        
+        
+        // new Promise((resolve)=>{
+        //     Controller.decisionBet(table);
+        //     resolve(table)
+        // }).then((table)=>Controller.transferToActionPage(table)).catch(()=>console.log("error of makeTableView()"));
     }
 
     static makePlayerCard(id, player,table){
@@ -406,17 +412,16 @@ class Controller{
     }
 
     static isAImode(table){
-        let flag = true;
-        for (let i = 0; i < table.players-1; i++){
-            if (table.players[i].type === "user") flag = false;
+        for (let i = 0; i < table.players.length-1; i++){
+            if (table.players[i].type === "user") return false;
         }
-        return flag;
+        return true;
     }
 
     static transferToActionPage(table){
         let target = document.getElementById("betSubmitDiv");
         let btnsArea = document.getElementById("actionsAndBetsDiv");
-
+        
         target.addEventListener("click",()=>{
             // Maskの解除※houseの一枚だけはMaskのまま
             if (!Controller.areAllPlayersBettingMoreThanZero(table)) alert("Betting chips more than zero. Of course, you cannot bet chips more than your belonging chips.");
@@ -436,8 +441,7 @@ class Controller{
                 table.haveTurn();
             }            
         })
-
-        if(Controller.isAImode(table)) target.click();
+        if (Controller.isAImode(table)) target.click();
     }
 
     static actionBtnEvent(player,table){
