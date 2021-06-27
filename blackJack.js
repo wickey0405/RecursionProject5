@@ -52,7 +52,9 @@ class View{
                 <!-- </form> -->
             </div>
         `
+    }
 
+    static inputUserName(table){
         // Nameに何も入力しなかった場合Default名Jiroで始まる。
         let btn = View.config.loginForm.querySelectorAll("button")[0];       
         
@@ -64,29 +66,19 @@ class View{
             if (name === 'house' || name === 'ai1' || name === 'ai2'){
                 window.alert("input another name. This name is unavailable.");
             } else {
-                View.goToRoundStartPage();
+                View.goToRoundStartPage(table);
             }
         })
     }
 
-    
-
-    static goToRoundStartPage(){
+    static goToRoundStartPage(table){
         View.displayNone(View.config.loginForm);
-        Controller.playerInfoSet();
-        View.makeTableView();        
+        Controller.playerInfoSet(table);
+        View.makeTableView(table);        
         View.displayBlock(View.config.roundStartPage);
     }
-            // <p class="m-0 text-center text-white rem3">Dealer</p>
 
-            // <!-- houseInfoDiv -->
-            // <div class="text-white d-flex m-0 p-0 justify-content-center">
-            //     <p class="rem1 text-left">S:waiting&ensp; </p>
-            // </div>
-            // <!-- House Card Row -->
-            // <div id="houseCardDiv" class="d-flex justify-content-center pt-3 pb-5">
-            // </div>
-    static makeTableView(){
+    static makeTableView(table){
         Controller.distributeCards(table)
         View.config.roundStartPage.innerHTML = `
         <div id="houseDiv" class="pt-5">
@@ -122,11 +114,8 @@ class View{
 
         // CardをMaskする
         for (let i = 0; i < table.players.length; i++){
-            // if(i !== table.players.length-1) {
-                View.makePlayerCard(View.config.playerId[i], table.players[i]);
+                View.makePlayerCard(View.config.playerId[i], table.players[i],table);
                 Controller.selectMaskCard(View.config.playerId[i]+"CardDiv",table.players[i].hand,[0,1]);
-            // }
-            // else Controller.selectMaskCard("houseCardDiv",table.players[i].hand,[0,1]);
         }
 
         // Bet用のボタンを作成する
@@ -137,11 +126,11 @@ class View{
             target.append(View.makeBetChoiceDiv(i, table.betDenominations[i]));
         }
 
-        Controller.decisionBet();
-        Controller.transferToActionPage();
+        Controller.decisionBet(table);
+        Controller.transferToActionPage(table);
     }
 
-    static makePlayerCard(id, player){
+    static makePlayerCard(id, player,table){
         let target = document.getElementById(id);
         let cardId = id + "CardDiv";
         let playerInfoId = id + "PlayerInfoDiv";
@@ -162,7 +151,7 @@ class View{
                 </div><!-- end Cards -->
             ` 
         } else {
-            console.log("yahoo");
+            // console.log("yahoo");
             target.innerHTML = `
                 <p id="${playerNameId}" class="m-0 text-white text-center rem3">${player.name}</p>
 
@@ -302,7 +291,7 @@ class View{
         `
     }
 
-    static makeNextRoundBtn(){
+    static makeNextRoundBtn(table){
         let target = document.getElementById("actionsAndBetsDiv");
         target.innerHTML = "";
         target.innerHTML = `
@@ -315,7 +304,7 @@ class View{
             table.deck.reListDeck();
             table.deck.shuffle();
             table.gamePhase = 'roundOver';
-            View.makeTableView();
+            View.makeTableView(table);
         })
     }
 }
@@ -324,10 +313,10 @@ class Controller{
     static initializeApp(){
         View.topPage();
         let table = new Table(View.config.loginForm.querySelectorAll("select")[0].value);
-        return table;
+        View.inputUserName(table);
     }
 
-    static playerInfoSet(){
+    static playerInfoSet(table){
         // playersとHouseの初期化
         let userName = View.config.loginForm.querySelectorAll("input")[0].value;
         table.house = new Player('Dealer', 'house', table.gameType);
@@ -336,7 +325,6 @@ class Controller{
         table.players.push(new Player('ai2', 'ai', table.gameType));
         table.players.push(table.house);
 
-        // Controller.distributeCards(table);
     }
 
     static distributeCards(table){
@@ -366,7 +354,7 @@ class Controller{
         }
     }
 
-    static bettingBtnEventForUser(num, player){
+    static bettingBtnEventForUser(num, player,table){
         if (player.type === "user"){
             let target = document.getElementById(`betChoiceDiv${num}`);
             let moneyUnit = table.betDenominations[num];
@@ -382,7 +370,7 @@ class Controller{
                     player.bet -= moneyUnit;
                     submitDiv.innerHTML = "";
                     submitDiv.innerHTML = "Submit your bet for " + player.bet;
-                    console.log(player.bet);
+                    // console.log(player.bet);
                 }
             })
 
@@ -392,24 +380,24 @@ class Controller{
                     player.bet += moneyUnit;
                     submitDiv.innerHTML = "";
                     submitDiv.innerHTML = "Submit your bet for " + player.bet;
-                    console.log(player.bet);
+                    // console.log(player.bet);
                 }       
             })
         }        
     }
 
-    static areAllPlayersBettingMoreThanZero(){
+    static areAllPlayersBettingMoreThanZero(table){
         for (let i = 0; i < table.players.length-1; i++){
             if (table.players[i].bet === 0) return false;
         }
         return true;
     }
 
-    static decisionBet(){
+    static decisionBet(table){
         for (let i = 0; i < table.players.length; i++){
             if (table.players[i].type === "user"){
                 for (let j = 0; j < table.betDenominations.length; j++){
-                    Controller.bettingBtnEventForUser(j, table.players[i]);
+                    Controller.bettingBtnEventForUser(j, table.players[i],table);
                 }
             } else if (table.players[i].type === "ai"){
                 Controller.bettingAiPlayer(table.players[i]);
@@ -417,21 +405,21 @@ class Controller{
         }
     }
 
-    static transferToActionPage(){
+    static transferToActionPage(table){
         let target = document.getElementById("betSubmitDiv");
         let btnsArea = document.getElementById("actionsAndBetsDiv");
 
         target.addEventListener("click",()=>{
             // Maskの解除※houseの一枚だけはMaskのまま
-            if (!Controller.areAllPlayersBettingMoreThanZero()) alert("Betting chips more than zero. Of course, you cannot bet chips more than your belonging chips.");
+            if (!Controller.areAllPlayersBettingMoreThanZero(table)) alert("Betting chips more than zero. Of course, you cannot bet chips more than your belonging chips.");
             else{
                 for (let i = 0; i < table.players.length; i++){
                     if(i !== table.players.length-1) {
-                        View.makePlayerCard(View.config.playerId[i], table.players[i]);
+                        View.makePlayerCard(View.config.playerId[i], table.players[i],table);
                         Controller.selectMaskCard(View.config.playerId[i]+"CardDiv",table.players[i].hand,[]);
                     }
                     else{
-                        View.makePlayerCard(View.config.playerId[i], table.players[i]);
+                        View.makePlayerCard(View.config.playerId[i], table.players[i],table);
                         Controller.selectMaskCard(View.config.playerId[i]+"CardDiv",table.players[i].hand,[1]);
                     } 
                 }
@@ -442,23 +430,30 @@ class Controller{
         })
     }
 
-    static actionBtnEvent(player){
+    static actionBtnEvent(player,table){
+        console.log("player tempAction: " + player.tempAction);
         let actionList = ["surrender", "stand", "hit", "double"];
         let gameDecision = new GameDecision("", player.bet);
         for (let i = 0; i < actionList.length; i++){
             let target = document.getElementById(actionList[i] + "Btn");
-            console.log("btn disable " + player.tempAction);
-            if (player.tempAction === "hit"){
-                if (actionList[i] === "surrender" || actionList[i] === "double"){
-                    target.classList.add("disabled");
-                }
-            }
             target.addEventListener("click",()=>{
                 gameDecision.action = target.innerHTML;
                 player.gameStatus = target.innerHTML;
                 console.log(gameDecision.action);
                 table.evaluateMoveSecond(player, gameDecision);
             })
+        }
+    }
+
+    static afterClickHitBtn(){
+        let actionList = ["surrender", "stand", "hit", "double"];
+        for (let i = 0; i < actionList.length; i++){
+            let target = document.getElementById(actionList[i] + "Btn");
+            
+            if (actionList[i] === "surrender" || actionList[i] === "double"){
+                // console.log("btn disable " + player.tempAction);
+                target.classList.add("disabled");
+            }
         }
     }
 
@@ -565,8 +560,6 @@ class Deck
     /*
        String gameType : どのゲームにリセットするか
        return null : このメソッドは、デッキの状態を更新します。
-    
-
     */
     reListDeck()
     {
@@ -625,9 +618,8 @@ class Player
         this.playerScore = this.getHandScore();
 
         // 最終的に決めたアクション stand, bust, double, blackjackのいずれか.初期値はbetting
-        this.tempAction = "betting";
         if (this.type === "house") this.tempAction = "waiting";
-
+        else this.tempAction = "betting";
     }
 
     /*
@@ -762,38 +754,33 @@ class Table
         this.players = [];
         
         // プレイヤーをここで初期化してください。
-        // this.house = new Player('house', 'ai', this.gameType);
-        // this.players.push(new Player("ai1", 'ai', this.gameType));
-        // this.players.push(new Player("user", 'ai', this.gameType));
-        // this.players.push(new Player('ai2', 'ai', this.gameType));
-        // this.players.push(this.house);
+        // Controller.playerInfoSet()で定義。
         
         this.gamePhase = 'betting';
 
         // これは各ラウンドの結果をログに記録するための文字列の配列です。
         this.resultsLog = [];
 
+        // ラウンドの回数をカウント
         this.turnCounter = 0;
 
     }
 
     evaluateMoveSecond(player, tempGameDisicion){
-        console.log("action: " + tempGameDisicion.action + ", bet: " + tempGameDisicion.amount);
+        // console.log("action: " + tempGameDisicion.action + ", bet: " + tempGameDisicion.amount);
         let num = this.getPlayerIdIndex(player);
         player.bet = parseInt(tempGameDisicion.amount);
             
         if (tempGameDisicion.action === "hit"){
             player.hand.push(this.deck.drawOne());
             player.tempAction = "hit";
-            View.makePlayerCard(View.config.playerId[num], table.players[num]);
-            Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
+            View.makePlayerCard(View.config.playerId[num], this.players[num],this);
+            Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",this.players[num].hand,[]);
         }
 
         if (player.getHandScore() > 21){
             player.gameStatus = "bust";
-            player.tempAction = "bust";
-            // player.chips -= player.bet;
-            // player.bet = 0;        
+            player.tempAction = "bust";      
         }
 
         if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
@@ -804,8 +791,8 @@ class Table
 
         if (tempGameDisicion.action === "double"){
             player.hand.push(this.deck.drawOne());
-            View.makePlayerCard(View.config.playerId[num], table.players[num]);
-            Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
+            View.makePlayerCard(View.config.playerId[num], this.players[num],this);
+            Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",this.players[num].hand,[]);
             player.tempAction = "double";
             player.gameStatus = "stand";
             player.bet *= 2;
@@ -818,13 +805,14 @@ class Table
         }
 
         if (player.type === "user"){
-            console.log("n回目のuserTurn()だよ")
-            console.log(player.gameStatus);
-            View.coloringPlayerNameOn(View.config.playerId[table.getPlayerIdIndex(player)]);
-            View.refreshPlayerStatus(View.config.playerId[table.getPlayerIdIndex(player)], player);
-            if (table.isThisPlayerActionsResolved(player)){
-                table.userTurn(player, table.isThisPlayerActionsResolved(player), table.getPlayerIdIndex(player));//userのActionが決定したら次のPlayerにターンを渡す
-            }            
+            // console.log("userTurn()だよ")
+            // console.log(player.gameStatus);
+            View.coloringPlayerNameOn(View.config.playerId[this.getPlayerIdIndex(player)]);
+            View.refreshPlayerStatus(View.config.playerId[this.getPlayerIdIndex(player)], player);
+            if (player.tempAction === "hit") Controller.afterClickHitBtn();
+            if (this.isThisPlayerActionsResolved(player)){
+                this.userTurn(player, this.isThisPlayerActionsResolved(player), this.getPlayerIdIndex(player));//userのActionが決定したら次のPlayerにターンを渡す
+            } 
         }
     }
     /*
@@ -837,45 +825,8 @@ class Table
     evaluateMove(player)
     {
         //TODO: ここから挙動をコードしてください。       
-        if (player.type === "ai" || player.type === "house") return this.evaluateMoveSecond(player, player.promptPlayer());
-        else if(player.type === "user") Controller.actionBtnEvent(player)
-
-
-        // let tempGameDisicion = player.promptPlayer();
-        // player.bet = parseInt(tempGameDisicion.amount);
-        // console.log(tempGameDisicion.action);
-        // if (tempGameDisicion.action === "hit"){
-        //     player.hand.push(this.deck.drawOne());
-        //     View.makePlayerCard(View.config.playerId[num], table.players[num]);
-        //     Controller.selectMaskCard(View.config.playerId[num]+"CardDiv",table.players[num].hand,[]);
-        // }
-
-        // if (player.getHandScore() > 21){
-        //     player.gameStatus = "bust";
-        //     player.tempAction = "bust";
-        //     // player.chips -= player.bet;
-        //     // player.bet = 0;        
-        // }
-
-        // if (tempGameDisicion.action === "stand" && player.getHandScore() <= 21){
-        //     player.tempAction = "stand";
-        //     if (player.isBlackJack()) player.tempAction = "blackjack";
-        //     player.gameStatus = "stand";
-        // }
-
-        // if (tempGameDisicion.action === "double"){
-        //     player.hand.push(this.deck.drawOne());
-        //     player.tempAction = "double";
-        //     player.gameStatus = "stand";
-        //     player.bet *= 2;
-        // }
-
-        // if (tempGameDisicion.action === "surrender"){
-        //     player.gameStatus = "bust";
-        //     player.tempAction = "surrender";
-        //     player.bet *= 0.5;
-        // }
-
+        if (player.type === "ai" || player.type === "house") this.evaluateMoveSecond(player, player.promptPlayer());
+        else if(player.type === "user") Controller.actionBtnEvent(player,this);
     }
 
     /*
@@ -930,8 +881,6 @@ class Table
             setTimeout(x=>{
                 this.aiTurn(x, this.isThisPlayerActionsResolved(x), i);
                 View.refreshPlayerStatus(View.config.playerId[this.getPlayerIdIndex(x)], x);
-                  
-                // console.log(player.tempAction);
             },2000, player);
         } else {
             let nextPlayer = this.getTurnPlayer();
@@ -951,8 +900,6 @@ class Table
             setTimeout(x=>{
                 this.houseTurn(x, this.isThisPlayerActionsResolved(x), i);
                 View.refreshHouseStatus(View.config.playerId[this.getPlayerIdIndex(x)], x);
-                  
-                // console.log(player.tempAction);
             },2000, player);
         } else {
             console.log("finish " + this.house.tempAction);
@@ -983,8 +930,8 @@ class Table
 
     getPlayerIdIndex(player){
         let num = 0;
-        for (let i = 0; i < table.players.length; i++){
-            if (player.name === table.players[i].name){
+        for (let i = 0; i < this.players.length; i++){
+            if (player.name === this.players[i].name){
                 num = i;
                 break;
             }
@@ -993,7 +940,7 @@ class Table
     }
 
     playerActionLoop(player, i){
-        if (i <= table.players.length-2){
+        if (i <= this.players.length-2){
             View.coloringPlayerNameOn(View.config.playerId[this.getPlayerIdIndex(player)]);     
             setTimeout((x)=>{
                 if (player.type === "ai"){
@@ -1003,7 +950,7 @@ class Table
                 }
             },100,player);
         } else{
-            View.makePlayerCard(View.config.playerId[this.getPlayerIdIndex(player)], player);
+            View.makePlayerCard(View.config.playerId[this.getPlayerIdIndex(player)], player,this);
             Controller.selectMaskCard(View.config.playerId[this.getPlayerIdIndex(player)]+"CardDiv",player.hand,[]);// Maskされていたカードを開く
             this.houseTurn(player, this.isThisPlayerActionsResolved(player),i);
         } 
@@ -1017,14 +964,7 @@ class Table
     {
         //TODO: ここから挙動をコードしてください。
 
-        let i = 0;
-
         console.log("******************start****************");
-        // while(!this.allPlayerActionsResolved()){
-        //     this.evaluateMove(this.players[i % this.players.length]);
-        //     console.log(this.players[i % this.players.length]);
-        //     i++; 
-        // }
 
         let currPlayer = this.getTurnPlayer();
         new Promise((resolve, reject)=>{
@@ -1032,28 +972,6 @@ class Table
             reject();
         }).then((val)=>this.playerActionLoop(val, 0))
         .then(()=>console.log("correctly finished!")).catch(()=>console.log("error of haveTurn()"));
-
-        // // this.players's last index data is the one of "house", so for loop goes until this.players.length - 1.
-        // for(let i = 0; i < this.players.length-1; i++){
-        //     if (this.judgeWinner(this.players[i], this.players[this.players.length-1]) && this.players[i].isBlackJack()) this.players[i].winAmount = this.players[i].bet * 1.5;
-        //     else if(this.judgeWinner(this.players[i], this.players[this.players.length-1])) this.players[i].winAmount = this.players[i].bet;
-        //     else if(this.players[i].getHandScore() === this.players[this.players.legnth-1]) this.players[i].winAmount = 0;
-        //     else this.players[i].winAmount = -1 * this.players[i].bet;
-
-        //     if (this.players[i].tempAction === "surrender") this.players[i].winAmount = -this.players[i].bet;
-
-        //     this.players[i].chips += this.players[i].winAmount;
-        //     // console.log(this.players[i % this.players.length]);
-        //     // console.log(this.players[i].isBlackJack());
-        // }
-        // // console.log(this.players[this.players.length-1]);
-
-        // // console.log(this.blackjackEvaluateAndGetRoundResults());
-        // this.turnCounter++;
-        // this.blackjackClearPlayerHandsAndBets();
-        // this.deck.reListDeck();
-        // this.gamePhase = 'roundOver';
-
     }
 
     judgeResult(){
@@ -1067,23 +985,12 @@ class Table
             if (this.players[i].tempAction === "surrender") this.players[i].winAmount = -this.players[i].bet;
 
             this.players[i].chips += this.players[i].winAmount;
-            // console.log(this.players[i % this.players.length]);
-            // console.log(this.players[i].isBlackJack());
         }
-        // console.log(this.players[this.players.length-1]);
-
-        // console.log(this.blackjackEvaluateAndGetRoundResults());
         this.resultsLog += this.blackjackEvaluateAndGetRoundResults()
         Controller.displayResult(this.resultsLog);
         this.turnCounter++;
-        View.makeNextRoundBtn();
+        View.makeNextRoundBtn(this);
     }
-
-    // goNextRound(){
-    //     this.blackjackClearPlayerHandsAndBets();
-    //     this.deck.reListDeck();
-    //     this.gamePhase = 'roundOver';
-    // }
 
     /*
       Player player: Player data, Player house: House data
@@ -1152,33 +1059,4 @@ class Table
     }
 }
 
-
-
-// console.log("************initial******************")
-
-// console.log(table.players);
-// console.log(table.gamePhase);
-
-// console.log("************first round******************");
-// // table.haveTurn();
-// // console.log(table.players);
-// // console.log(table.gamePhase);
-// while (table.turnCounter <= 3){
-//     table.gamePhase = "betting";
-//     while(table.gamePhase != 'roundOver'){
-//     table.haveTurn();
-//     }
-// }
-// // table.haveTurn();
-// // console.log(table.players);
-// console.log(table.gamePhase);
-
-// // let table1 = new Table("ai", "blackjack");
-// // while(table1.gamePhase != 'roundOver'){
-// //     table1.haveTurn();
-// // }
-
-// // 初期状態では、ハウスと2人以上のA.Iプレーヤーが戦います。
-// // console.log(table1.resultsLog);
-
-let table = Controller.initializeApp();
+Controller.initializeApp();
