@@ -87,6 +87,7 @@ class View{
             // <div id="houseCardDiv" class="d-flex justify-content-center pt-3 pb-5">
             // </div>
     static makeTableView(){
+        Controller.distributeCards(table)
         View.config.roundStartPage.innerHTML = `
         <div id="houseDiv" class="pt-5">
 
@@ -113,7 +114,7 @@ class View{
             <div id="actionsAndBetsDiv" class="d-flex pb-5 pt-4 justify-content-center">
             </div><!-- end actionsAndBetsDiv-->
             <!-- resultStorage -->
-            <div id="resultDiv" class="d-flex pb-5 pt-4 justify-content-center text-white">
+            <div id="resultDiv" class="d-flex pb-5 pt-4 justify-content-center text-white overflow-auto" style="max-height: 120px;">
             </div>
         </div>
         
@@ -177,17 +178,20 @@ class View{
         
     }
 
-    static coloringPlayerName(id, player){
+    static coloringPlayerNameOn(id){
         let playerNameId = id + "PlayerName";
         let target = document.getElementById(playerNameId);
 
-        if (table.getTurnPlayer(player)){
-            target.classList.remove("text-white");
-            target.classList.add("text-warning");
-        } else {
-            target.classList.remove("text-warning");
-            target.classList.add("text-white");
-        }
+        target.classList.remove("text-white");
+        target.classList.add("text-warning");
+    }
+
+    static coloringPlayerNameOff(id){
+        let playerNameId = id + "PlayerName";
+        let target = document.getElementById(playerNameId);
+
+        target.classList.remove("text-warning");
+        target.classList.add("text-white");
     }
 
     static refreshPlayerStatus(id, player){
@@ -278,6 +282,7 @@ class View{
 
     static makeActionBtn(){
         let target = document.getElementById("actionsAndBetsDiv");
+        target.innerHTML = "";
         target.innerHTML = `
         <!-- actionsDiv -->
             <div id ="actionsDiv" class="d-flex flex-wrap w-70">
@@ -295,6 +300,23 @@ class View{
                 </div>
             </div> <!-- end actionsDiv -->
         `
+    }
+
+    static makeNextRoundBtn(){
+        let target = document.getElementById("actionsAndBetsDiv");
+        target.innerHTML = "";
+        target.innerHTML = `
+            <div class=py-2 d-flex justify-content-center">
+                <a id="nextBtn" class="btn btn-primary px-5 py-1">next round</a>
+            </div>
+        `
+        document.getElementById("nextBtn").addEventListener("click",()=>{
+            table.blackjackClearPlayerHandsAndBets();
+            table.deck.reListDeck();
+            table.deck.shuffle();
+            table.gamePhase = 'roundOver';
+            View.makeTableView();
+        })
     }
 }
 
@@ -314,7 +336,7 @@ class Controller{
         table.players.push(new Player('ai2', 'ai', table.gameType));
         table.players.push(table.house);
 
-        Controller.distributeCards(table);
+        // Controller.distributeCards(table);
     }
 
     static distributeCards(table){
@@ -798,7 +820,7 @@ class Table
         if (player.type === "user"){
             console.log("n回目のuserTurn()だよ")
             console.log(player.gameStatus);
-            View.coloringPlayerName(View.config.playerId[table.getPlayerIdIndex(player)], player);
+            View.coloringPlayerNameOn(View.config.playerId[table.getPlayerIdIndex(player)]);
             View.refreshPlayerStatus(View.config.playerId[table.getPlayerIdIndex(player)], player);
             if (table.isThisPlayerActionsResolved(player)){
                 table.userTurn(player, table.isThisPlayerActionsResolved(player), table.getPlayerIdIndex(player));//userのActionが決定したら次のPlayerにターンを渡す
@@ -894,7 +916,8 @@ class Table
             this.players[i].gameStatus = 'betting';
             this.players[i].hand = [];
             this.players[i].winAmount = 0;
-            this.players[i].tempAction = "";
+            if(this.players[i].type !== "house") this.players[i].tempAction = "betting";
+            else this.players[i].tempAction = "waiting";
         }
     }
     
@@ -902,7 +925,7 @@ class Table
     aiTurn(player, flag, i){
         if(!flag){
             this.evaluateMove(player);
-            View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)], player);
+            View.coloringPlayerNameOn(View.config.playerId[this.getPlayerIdIndex(player)]);
 
             setTimeout(x=>{
                 this.aiTurn(x, this.isThisPlayerActionsResolved(x), i);
@@ -912,6 +935,7 @@ class Table
             },2000, player);
         } else {
             let nextPlayer = this.getTurnPlayer();
+            View.coloringPlayerNameOff(View.config.playerId[this.getPlayerIdIndex(player)]);
             new Promise((resolve, reject)=>{
                 resolve(nextPlayer);
                 reject("error");
@@ -922,7 +946,7 @@ class Table
     houseTurn(player, flag, i){
         if(!flag){
             this.evaluateMove(player);
-            View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)], player);
+            View.coloringPlayerNameOn(View.config.playerId[this.getPlayerIdIndex(player)]);
 
             setTimeout(x=>{
                 this.houseTurn(x, this.isThisPlayerActionsResolved(x), i);
@@ -931,8 +955,9 @@ class Table
                 // console.log(player.tempAction);
             },2000, player);
         } else {
-            table.judgeResult();
-            console.log("finish");
+            console.log("finish " + this.house.tempAction);
+            this.judgeResult();
+            
         }
     }
 
@@ -947,6 +972,7 @@ class Table
 
         } else {
             let nextPlayer = this.getTurnPlayer();
+            View.coloringPlayerNameOff(View.config.playerId[this.getPlayerIdIndex(player)]);
             Controller.allActionBtnDisabled();
             new Promise((resolve, reject)=>{
                 resolve(nextPlayer);
@@ -968,7 +994,7 @@ class Table
 
     playerActionLoop(player, i){
         if (i <= table.players.length-2){
-            View.coloringPlayerName(View.config.playerId[this.getPlayerIdIndex(player)],player);     
+            View.coloringPlayerNameOn(View.config.playerId[this.getPlayerIdIndex(player)]);     
             setTimeout((x)=>{
                 if (player.type === "ai"){
                     this.aiTurn(x, this.isThisPlayerActionsResolved(x), i);
@@ -980,7 +1006,6 @@ class Table
             View.makePlayerCard(View.config.playerId[this.getPlayerIdIndex(player)], player);
             Controller.selectMaskCard(View.config.playerId[this.getPlayerIdIndex(player)]+"CardDiv",player.hand,[]);// Maskされていたカードを開く
             this.houseTurn(player, this.isThisPlayerActionsResolved(player),i);
-            return;
         } 
     }
 
@@ -1047,13 +1072,18 @@ class Table
         }
         // console.log(this.players[this.players.length-1]);
 
-        console.log(this.blackjackEvaluateAndGetRoundResults());
-        Controller.displayResult(this.blackjackEvaluateAndGetRoundResults());
+        // console.log(this.blackjackEvaluateAndGetRoundResults());
+        this.resultsLog += this.blackjackEvaluateAndGetRoundResults()
+        Controller.displayResult(this.resultsLog);
         this.turnCounter++;
-        this.blackjackClearPlayerHandsAndBets();
-        this.deck.reListDeck();
-        this.gamePhase = 'roundOver';
+        View.makeNextRoundBtn();
     }
+
+    // goNextRound(){
+    //     this.blackjackClearPlayerHandsAndBets();
+    //     this.deck.reListDeck();
+    //     this.gamePhase = 'roundOver';
+    // }
 
     /*
       Player player: Player data, Player house: House data
